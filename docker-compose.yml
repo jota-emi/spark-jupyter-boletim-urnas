@@ -1,28 +1,43 @@
 version: '3'
 services:
-  master:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - ./hadoop_namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    volumes:
+      - ./hadoop_datanode:/hadoop/dfs/data
+      - ./data:/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop.env
+
+  spark:
     image: bitnami/spark:3.4.0
     ports:
       - '8080:8080'  # Spark master UI
       - '7077:7077'  # Spark master address
-     # - '8888:8888'  # Jupyter Notebook server
     volumes:
       - './notebooks:/opt/notebooks'  # Mount notebooks directory
     environment:
       - SPARK_MODE=master
-      - SPARK_MASTER_HOST=master
-    networks:
-      - spark-net
 
-  worker:
+  spark-worker:
     image: bitnami/spark:3.4.0
     depends_on:
-      - master
+      - spark
     environment:
       - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://master:7077
-    networks:
-      - spark-net
+      - SPARK_MASTER_URL=spark://spark:7077
 
   jupyter:
     image: jupyter/pyspark-notebook:spark-3.4.0
@@ -33,8 +48,6 @@ services:
       - './notebooks/bweb_1t_RN_051020221321.csv:/home/jovyan/work/bweb_1t_RN_051020221321.csv'
     depends_on:
       - master
-    networks:
-      - spark-net
     command: bash -c "start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''"
-networks:
-  spark-net:
+
+  
