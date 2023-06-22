@@ -1,0 +1,40 @@
+version: '3'
+services:
+  master:
+    image: bitnami/spark:3.4.0
+    ports:
+      - '8080:8080'  # Spark master UI
+      - '7077:7077'  # Spark master address
+     # - '8888:8888'  # Jupyter Notebook server
+    volumes:
+      - './notebooks:/opt/notebooks'  # Mount notebooks directory
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=master
+    networks:
+      - spark-net
+
+  worker:
+    image: bitnami/spark:3.4.0
+    depends_on:
+      - master
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://master:7077
+    networks:
+      - spark-net
+
+  jupyter:
+    image: jupyter/pyspark-notebook:spark-3.4.0
+    ports:
+      - '8888:8888'
+    volumes:
+      - './notebooks:/home/jovyan/work'  # Mount notebooks directory
+      - './notebooks/bweb_1t_RN_051020221321.csv:/home/jovyan/work/bweb_1t_RN_051020221321.csv'
+    depends_on:
+      - master
+    networks:
+      - spark-net
+    command: bash -c "start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''"
+networks:
+  spark-net:
